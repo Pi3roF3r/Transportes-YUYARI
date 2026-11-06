@@ -35,6 +35,7 @@ class Vehicle(Timestamped):
     owner = models.CharField(max_length=100, default='Propia')
     capacity = models.PositiveSmallIntegerField(default=1)
     delegate = models.CharField(max_length=160, blank=True)
+    delegate_license_number = models.CharField(max_length=40, blank=True)
     status = models.CharField(max_length=40, default='Disponible')
     maintenance_start = models.DateField(null=True, blank=True)
     maintenance_end = models.DateField(null=True, blank=True)

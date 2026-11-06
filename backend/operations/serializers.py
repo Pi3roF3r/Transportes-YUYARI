@@ -15,10 +15,15 @@ class VehicleSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         start = attrs.get('maintenance_start', getattr(self.instance, 'maintenance_start', None))
         end = attrs.get('maintenance_end', getattr(self.instance, 'maintenance_end', None))
+        delegate = (attrs.get('delegate', getattr(self.instance, 'delegate', '')) or '').strip()
+        delegate_license = (attrs.get('delegate_license_number', getattr(self.instance, 'delegate_license_number', '')) or '').strip()
         if start and end and end < start:
             raise serializers.ValidationError({'maintenance_end': 'La fecha final del mantenimiento no puede ser anterior a la inicial.'})
         if attrs.get('capacity', getattr(self.instance, 'capacity', 1)) < 1:
             raise serializers.ValidationError({'capacity': 'La unidad debe tener al menos un asiento de capacidad.'})
+        driver_details_changed = self.instance is None or 'delegate' in attrs or 'delegate_license_number' in attrs
+        if driver_details_changed and delegate and not delegate_license:
+            raise serializers.ValidationError({'delegate_license_number': 'Registra la licencia del conductor delegado.'})
         return attrs
 class StopSerializer(serializers.ModelSerializer):
     class Meta: model=Stop; fields=('id','position','name','arrival_time','duration_minutes','latitude','longitude','notes')
