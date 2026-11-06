@@ -33,11 +33,34 @@ class ServiceSerializer(serializers.ModelSerializer):
     passengers = ServicePassengerSerializer(many=True, required=False)
     client_display = serializers.SerializerMethodField()
     vehicle_display = serializers.SerializerMethodField()
+    total_price = serializers.SerializerMethodField()
     class Meta: model=Service; fields='__all__'; read_only_fields=('created_at','updated_at','client_display','vehicle_display')
     def get_client_display(self,obj): return obj.client.name if obj.client_id else obj.client_name
     def get_vehicle_display(self,obj): return str(obj.vehicle) if obj.vehicle_id else obj.vehicle_name
+    def get_total_price(self,obj): return obj.price + (obj.drone_price if obj.drone else 0)
     def validate(self, attrs):
         instance = self.instance
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        can_manage_drone_price = bool(user and user.is_authenticated and (user.is_superuser or user.groups.filter(name='Administrador').exists() or effective_permissions(user).get('services', {}).get('edit', False)))
+        drone = attrs.get('drone', getattr(instance, 'drone', False))
+        drone_details_touched = instance is None or any(key in attrs for key in ('drone', 'drone_price', 'drone_passengers'))
+        if (drone or 'drone_price' in attrs or 'drone_passengers' in attrs) and not can_manage_drone_price:
+            raise serializers.ValidationError({'drone': 'Solo administración o usuarios con permiso para editar servicios pueden gestionar el precio del dron.'})
+        if drone_details_touched:
+            if drone:
+                drone_price = attrs.get('drone_price', getattr(instance, 'drone_price', 0))
+                drone_passengers = attrs.get('drone_passengers', getattr(instance, 'drone_passengers', 0))
+                people = attrs.get('people', getattr(instance, 'people', 1))
+                if drone_price < 0:
+                    raise serializers.ValidationError({'drone_price': 'El precio del servicio de dron no puede ser negativo.'})
+                if drone_passengers < 1:
+                    raise serializers.ValidationError({'drone_passengers': 'Indica cuántos pasajeros usarán el servicio de dron.'})
+                if drone_passengers > people:
+                    raise serializers.ValidationError({'drone_passengers': f'No puede superar la cantidad de pasajeros del servicio ({people}).'})
+            else:
+                attrs['drone_price'] = 0
+                attrs['drone_passengers'] = 0
         service_date = attrs.get('date', getattr(instance, 'date', None))
         service_time = attrs.get('time', getattr(instance, 'time', None))
         duration = attrs.get('duration_minutes', getattr(instance, 'duration_minutes', 120))

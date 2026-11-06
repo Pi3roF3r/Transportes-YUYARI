@@ -73,6 +73,7 @@ class Service(Timestamped):
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     drone = models.BooleanField(default=False)
     drone_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    drone_passengers = models.PositiveSmallIntegerField(default=0)
     notes = models.TextField(blank=True)
     incident_log = models.TextField(blank=True)
     checklist = models.JSONField(default=dict, blank=True)
