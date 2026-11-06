@@ -1,0 +1,33 @@
+# Frontend
+node_modules/
+dist/
+.pnpm-store/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Local databases and uploaded data
+*.sqlite3
+backend/db.sqlite3
+media/
+backend/media/
+staticfiles/
+backend/staticfiles/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

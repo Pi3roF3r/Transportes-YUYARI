@@ -1,0 +1,9 @@
+{
+  "name": "yuyari-operaciones",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "dev": "vite --host 0.0.0.0", "build": "vite build", "preview": "vite preview --host 0.0.0.0", "start": "vite preview --host 0.0.0.0 --port $PORT" },
+  "dependencies": { "@tanstack/react-query": "^5.90.0", "@tanstack/react-router": "^1.132.0", "react": "^19.1.0", "react-dom": "^19.1.0", "lucide-react": "^0.468.0" },
+  "devDependencies": { "@vitejs/plugin-react": "^5.0.0", "vite": "^7.1.0" }
+}
