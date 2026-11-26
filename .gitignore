@@ -31,3 +31,6 @@ backend/staticfiles/
 .idea/
 .DS_Store
 Thumbs.db
+
+Manual_Sistema_Yuyari.pdf
+*.pdf
