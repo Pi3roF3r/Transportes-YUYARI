@@ -2,13 +2,14 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from operations.views import ClientViewSet, ContactViewSet, ExpenseViewSet, ServiceViewSet, TransferViewSet, UserViewSet, VehicleViewSet, current_user, system_settings
+from operations.views import ClientViewSet, ContactViewSet, ExpenseViewSet, ServiceViewSet, TouristGuideViewSet, TransferViewSet, UserViewSet, VehicleViewSet, current_user, system_settings
 
 router = DefaultRouter()
 router.register('services', ServiceViewSet)
 router.register('clients', ClientViewSet)
 router.register('contacts', ContactViewSet)
 router.register('vehicles', VehicleViewSet)
+router.register('guides', TouristGuideViewSet)
 router.register('transfers', TransferViewSet)
 router.register('expenses', ExpenseViewSet)
 router.register('users', UserViewSet)

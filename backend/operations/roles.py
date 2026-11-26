@@ -1,8 +1,8 @@
 ROLE_ACCESS = {
-    'Administrador': {'services', 'clients', 'contacts', 'vehicles', 'transfers', 'expenses', 'reports', 'users'},
-    'Jefe': {'services', 'clients', 'contacts', 'vehicles', 'transfers', 'expenses', 'reports'},
-    'Encargado': {'services', 'clients', 'contacts', 'vehicles', 'transfers'},
-    'Operaciones': {'services', 'clients', 'transfers'},
+    'Administrador': {'services', 'clients', 'contacts', 'vehicles', 'guides', 'transfers', 'expenses', 'reports', 'users'},
+    'Jefe': {'services', 'clients', 'contacts', 'vehicles', 'guides', 'transfers', 'expenses', 'reports'},
+    'Encargado': {'services', 'clients', 'contacts', 'vehicles', 'guides', 'transfers'},
+    'Operaciones': {'services', 'clients', 'guides', 'transfers'},
 }
 
 ROLE_WRITES = {
@@ -10,11 +10,12 @@ ROLE_WRITES = {
     'clients': {'Jefe', 'Encargado', 'Operaciones'},
     'contacts': {'Jefe', 'Encargado'},
     'vehicles': {'Jefe', 'Encargado'},
+    'guides': {'Jefe', 'Encargado'},
     'transfers': {'Jefe', 'Encargado', 'Operaciones'},
     'expenses': {'Jefe'},
 }
 
-PERMISSION_SECTIONS = ('services', 'clients', 'contacts', 'vehicles', 'transfers', 'expenses', 'reports', 'settings')
+PERMISSION_SECTIONS = ('services', 'clients', 'contacts', 'vehicles', 'guides', 'transfers', 'expenses', 'reports', 'settings')
 PERMISSION_ACTIONS = ('view', 'create', 'edit', 'delete')
 
 

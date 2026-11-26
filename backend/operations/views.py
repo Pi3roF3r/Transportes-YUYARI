@@ -1,12 +1,16 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import permissions, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import api_view, permission_classes
+from django.shortcuts import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from .models import Client, Contact, Expense, Service, SystemSettings, Transfer, UserAccess, Vehicle
+from .models import Client, Contact, Expense, Service, ServiceBooking, ServicePassenger, SystemSettings, TouristGuide, Transfer, UserAccess, Vehicle
 from .roles import ROLE_WRITES, effective_permissions, user_can_access, user_role
-from .serializers import ClientSerializer, ContactSerializer, ExpenseSerializer, ServiceSerializer, TransferSerializer, UserSerializer, VehicleSerializer
+from .serializers import ClientSerializer, ContactSerializer, ExpenseSerializer, ServiceBookingSerializer, ServicePassengerSerializer, ServiceSerializer, TouristGuideSerializer, TransferSerializer, UserSerializer, VehicleSerializer
 
 
 class RolePermission(permissions.BasePermission):
@@ -25,10 +29,16 @@ class RolePermission(permissions.BasePermission):
         except UserAccess.DoesNotExist:
             custom_permissions = None
         if custom_permissions is not None:
+            action_name = getattr(view, 'action', '')
             action = {
                 'list': 'view', 'retrieve': 'view', 'create': 'create',
                 'update': 'edit', 'partial_update': 'edit', 'destroy': 'delete',
-            }.get(getattr(view, 'action', ''), 'view')
+                'journey': 'edit',
+                'booking_payment': 'edit',
+                'movement': 'edit',
+            }.get(action_name, 'view')
+            if action_name == 'bookings':
+                action = 'create' if request.method == 'POST' else 'view'
             return bool(effective_permissions(user).get(section, {}).get(action, False))
         if request.method in permissions.SAFE_METHODS:
             return True
@@ -46,10 +56,224 @@ class ContactViewSet(BaseViewSet):
     queryset=Contact.objects.all().order_by('-created_at'); serializer_class=ContactSerializer; search_fields=['name','kind','person','phone']; section='contacts'
 class VehicleViewSet(BaseViewSet):
     queryset=Vehicle.objects.select_related('provider').all().order_by('name'); serializer_class=VehicleSerializer; search_fields=['name','plate','owner','delegate']; section='vehicles'
+class TouristGuideViewSet(BaseViewSet):
+    queryset=TouristGuide.objects.all().order_by('full_name'); serializer_class=TouristGuideSerializer; search_fields=['full_name','dni','carnet','phone']; section='guides'
 class ServiceViewSet(BaseViewSet):
-    queryset=Service.objects.select_related('client','vehicle').prefetch_related('stops').all().order_by('date','time'); serializer_class=ServiceSerializer; search_fields=['name','client_name','origin','destination','driver','type']; section='services'
+    queryset=Service.objects.select_related('client','vehicle').prefetch_related('stops','passengers','bookings__passengers').all().order_by('date','time'); serializer_class=ServiceSerializer; search_fields=['name','client_name','origin','destination','driver','type']; section='services'
+
+    @action(detail=True, methods=['get', 'post'])
+    @transaction.atomic
+    def bookings(self, request, pk=None):
+        service = self.get_object()
+        if request.method == 'GET':
+            bookings = service.bookings.select_related('client').prefetch_related('passengers').order_by('-created_at')
+            return Response(ServiceBookingSerializer(bookings, many=True).data)
+        if service.type != 'Tour público':
+            return Response({'detail': 'Las reservas individuales solo están disponibles en salidas de Tour público.'}, status=400)
+        service = Service.objects.select_for_update().select_related('vehicle').get(pk=service.pk)
+        if service.status in ('Cancelado', 'Completado') or service.journey_status != 'Pendiente':
+            return Response({'detail': 'Esta salida ya no acepta nuevas reservas.'}, status=400)
+        contact_name = str(request.data.get('contact_name', '')).strip()
+        contact_phone = str(request.data.get('contact_phone', '')).strip()
+        passenger_rows = request.data.get('passengers')
+        if not contact_name:
+            return Response({'contact_name': 'Indica quién realiza la reserva.'}, status=400)
+        if not isinstance(passenger_rows, list) or not passenger_rows:
+            return Response({'passengers': 'Agrega al menos un pasajero a la reserva.'}, status=400)
+        if not service.vehicle_id:
+            return Response({'vehicle': 'La salida no tiene una unidad con capacidad registrada.'}, status=400)
+
+        cleaned = []
+        used_seats = set()
+        default_payment_status = request.data.get('payment_status') if request.data.get('payment_status') in ('Pagado', 'Pendiente') else 'Pendiente'
+        default_payment_method = request.data.get('payment_method', '')
+        for index, row in enumerate(passenger_rows, start=1):
+            row = {**row}
+            row.setdefault('payment_status', default_payment_status)
+            row.setdefault('payment_method', default_payment_method)
+            if (row.get('guardian_name') or '').strip():
+                row.setdefault('guardian_payment_status', default_payment_status)
+                row.setdefault('guardian_payment_method', default_payment_method)
+            serializer = ServicePassengerSerializer(data=row)
+            if not serializer.is_valid():
+                return Response({'passengers': f'Pasajero {index}: {serializer.errors}'}, status=400)
+            passenger = dict(serializer.validated_data)
+            if not passenger.get('document_number') or passenger.get('age') is None:
+                return Response({'passengers': f'Completa documento y edad del pasajero {index}.'}, status=400)
+            has_guardian = bool((passenger.get('guardian_name') or '').strip())
+            if passenger['age'] < 18:
+                if has_guardian and not (passenger.get('guardian_document_number') and passenger.get('guardian_relationship')):
+                    return Response({'passengers': f'Completa documento y parentesco del acompañante del menor {index}.'}, status=400)
+                if not has_guardian and not passenger.get('authorization_reference'):
+                    return Response({'passengers': f'Registra un acompañante o la autorización si el menor {index} viaja solo.'}, status=400)
+            cleaned.append((passenger, has_guardian))
+
+        passenger_count = sum(1 + int(has_guardian) for _, has_guardian in cleaned)
+        occupied = service.passengers.all()
+        occupied_seats = {seat for passenger in occupied for seat in (passenger.seat_number, passenger.guardian_seat_number) if seat is not None}
+        if len(occupied_seats) + passenger_count > service.vehicle.capacity:
+            return Response({'passengers': f'Solo quedan {max(0, service.vehicle.capacity - len(occupied_seats))} asientos disponibles.'}, status=400)
+
+        def allocate(requested):
+            if requested is not None:
+                seat = int(requested)
+                if seat < 1 or seat > service.vehicle.capacity or seat in used_seats or seat in occupied_seats:
+                    raise ValueError(f'El asiento {seat} no está disponible en esta salida.')
+            else:
+                seat = next((number for number in range(1, service.vehicle.capacity + 1) if number not in occupied_seats and number not in used_seats), None)
+                if seat is None:
+                    raise ValueError('No quedan asientos disponibles en esta unidad.')
+            used_seats.add(seat)
+            return seat
+
+        try:
+            for passenger, has_guardian in cleaned:
+                passenger['seat_number'] = allocate(passenger.get('seat_number'))
+                if has_guardian:
+                    passenger['guardian_seat_number'] = allocate(passenger.get('guardian_seat_number'))
+                else:
+                    passenger['guardian_seat_number'] = None
+                    passenger['guardian_drone'] = False
+        except (TypeError, ValueError) as error:
+            return Response({'passengers': str(error)}, status=400)
+
+        drone_count = sum(int(bool(passenger.get('drone'))) + int(bool(passenger.get('guardian_drone') and has_guardian)) for passenger, has_guardian in cleaned)
+        if drone_count and service.drone_price <= 0:
+            return Response({'passengers': 'Esta salida aún no tiene una tarifa de dron configurada por administración.'}, status=400)
+        client_id = request.data.get('client')
+        client = get_object_or_404(Client, pk=client_id) if client_id else None
+        with transaction.atomic():
+            booking = ServiceBooking.objects.create(
+                service=service,
+                client=client,
+                contact_name=contact_name,
+                contact_phone=contact_phone,
+                passenger_count=passenger_count,
+                drone_passengers=drone_count,
+                ticket_price=service.price,
+                drone_price=service.drone_price,
+                payment_status='Pagado' if request.data.get('payment_status') == 'Pagado' else 'Pendiente',
+            )
+            position = service.passengers.count()
+            for offset, (passenger, _) in enumerate(cleaned):
+                ServicePassenger.objects.create(service=service, booking=booking, position=position + offset, **passenger)
+            attendees = [status for passenger, has_guardian in cleaned for status in (
+                [passenger.get('payment_status', 'Pendiente')]
+                + ([passenger.get('guardian_payment_status', 'Pendiente')] if has_guardian else [])
+            )]
+            booking.payment_status = 'Pagado' if attendees and all(status == 'Pagado' for status in attendees) else 'Pendiente'
+            booking.save(update_fields=['payment_status', 'updated_at'])
+            service.people += passenger_count
+            service.drone_passengers += drone_count
+            service.drone = service.drone_passengers > 0
+            service.save(update_fields=['people', 'drone_passengers', 'drone', 'updated_at'])
+        service.refresh_from_db()
+        return Response(self.get_serializer(service).data, status=201)
+
+    @action(detail=True, methods=['patch'], url_path=r'bookings/(?P<booking_id>[^/.]+)/payment')
+    def booking_payment(self, request, pk=None, booking_id=None):
+        service = self.get_object()
+        booking = get_object_or_404(ServiceBooking, pk=booking_id, service=service)
+        payment_status = request.data.get('payment_status')
+        if payment_status not in ('Pendiente', 'Pagado'):
+            return Response({'payment_status': 'El estado debe ser Pendiente o Pagado.'}, status=400)
+        payment_method = request.data.get('payment_method')
+        if payment_status == 'Pagado' and payment_method not in ('Efectivo', 'Yape', 'Plin', 'Transferencia', 'Tarjeta', 'Otro'):
+            return Response({'payment_method': 'Selecciona cómo se recibió el pago.'}, status=400)
+        with transaction.atomic():
+            passengers = list(booking.passengers.all())
+            for passenger in passengers:
+                passenger.payment_status = payment_status
+                passenger.payment_method = payment_method if payment_status == 'Pagado' else ''
+                if passenger.guardian_name:
+                    passenger.guardian_payment_status = payment_status
+                    passenger.guardian_payment_method = payment_method if payment_status == 'Pagado' else ''
+                passenger.save(update_fields=['payment_status', 'payment_method', 'guardian_payment_status', 'guardian_payment_method', 'updated_at'])
+            booking.payment_status = payment_status
+            booking.save(update_fields=['payment_status', 'updated_at'])
+        return Response(ServiceBookingSerializer(booking).data)
+
+    def _route_points(self, service):
+        return [service.origin, *service.stops.order_by('position').values_list('name', flat=True), service.destination]
+
+    def _record_journey_event(self, service, event, point):
+        service.journey_events = [*service.journey_events, {
+            'event': event,
+            'point': point,
+            'timestamp': timezone.now().isoformat(),
+            'user': self.request.user.get_username(),
+        }]
+
+    @action(detail=True, methods=['post'])
+    def journey(self, request, pk=None):
+        service = self.get_object()
+        action_name = request.data.get('action')
+        if service.status == 'Cancelado':
+            return Response({'detail': 'No se puede avanzar un servicio cancelado.'}, status=400)
+        points = self._route_points(service)
+        last_step = len(points) - 1
+
+        if action_name == 'start':
+            if service.journey_status != 'Pendiente':
+                return Response({'detail': 'El viaje ya fue iniciado o finalizado.'}, status=400)
+            service.journey_status = 'En curso'
+            service.journey_leg = 'ida'
+            service.journey_step = 0
+            self._record_journey_event(service, 'Salida', points[0])
+        elif action_name == 'arrive':
+            if service.journey_status == 'En curso' and service.journey_leg == 'ida':
+                if service.journey_step >= last_step:
+                    return Response({'detail': 'Ya se registró la llegada al destino.'}, status=400)
+                service.journey_step += 1
+            elif service.journey_status == 'En retorno' and service.journey_leg == 'retorno':
+                if service.journey_step <= 0:
+                    return Response({'detail': 'Ya se registró la llegada al punto de origen.'}, status=400)
+                service.journey_step -= 1
+            else:
+                return Response({'detail': 'Inicia el viaje antes de registrar una llegada.'}, status=400)
+            self._record_journey_event(service, 'Llegada', points[service.journey_step])
+        elif action_name == 'return':
+            if not service.return_required:
+                return Response({'detail': 'Este servicio fue registrado como solo ida.'}, status=400)
+            if service.journey_status != 'En curso' or service.journey_step != last_step:
+                return Response({'detail': 'Registra primero la llegada al destino para iniciar el retorno.'}, status=400)
+            service.journey_status = 'En retorno'
+            service.journey_leg = 'retorno'
+            self._record_journey_event(service, 'Inicio de retorno', points[-1])
+        elif action_name == 'finish':
+            can_finish_one_way = not service.return_required and service.journey_status == 'En curso' and service.journey_step == last_step
+            can_finish_return = service.return_required and service.journey_status == 'En retorno' and service.journey_step == 0
+            if not (can_finish_one_way or can_finish_return):
+                return Response({'detail': 'Completa la ruta de ida y el retorno requerido antes de finalizar.'}, status=400)
+            service.journey_status = 'Completado'
+            service.status = 'Completado'
+            service.journey_leg = ''
+            self._record_journey_event(service, 'Servicio finalizado', points[service.journey_step])
+        else:
+            return Response({'detail': 'Acción de viaje desconocida.'}, status=400)
+
+        service.save(update_fields=['journey_status', 'journey_leg', 'journey_step', 'journey_events', 'status', 'updated_at'])
+        return Response(self.get_serializer(service).data)
 class TransferViewSet(BaseViewSet):
     queryset=Transfer.objects.select_related('service').all().order_by('datetime'); serializer_class=TransferSerializer; search_fields=['title','place','responsible']; section='transfers'
+
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def movement(self, request, pk=None):
+        transfer = Transfer.objects.select_for_update().get(pk=pk)
+        action_name = request.data.get('action')
+        if action_name == 'depart' and transfer.status == 'Programado':
+            transfer.status = 'En camino'
+            transfer.departed_at = timezone.now()
+            transfer.save(update_fields=['status', 'departed_at', 'updated_at'])
+        elif action_name == 'arrive' and transfer.status == 'En camino':
+            transfer.status = 'Llegó al destino'
+            transfer.arrived_at = timezone.now()
+            transfer.save(update_fields=['status', 'arrived_at', 'updated_at'])
+        else:
+            return Response({'detail': 'Marca primero la salida del carro y luego su llegada al destino.'}, status=400)
+        return Response(self.get_serializer(transfer).data)
+
 class ExpenseViewSet(BaseViewSet):
     queryset=Expense.objects.select_related('service').all().order_by('-date'); serializer_class=ExpenseSerializer; search_fields=['concept','category','service_name']; section='expenses'
 

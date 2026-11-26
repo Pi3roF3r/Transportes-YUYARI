@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Client, Contact, Expense, Service, Stop, Transfer, Vehicle
+from .models import Client, Contact, Expense, Service, Stop, TouristGuide, Transfer, Vehicle
 
 class StopInline(admin.TabularInline): model=Stop; extra=0
 @admin.register(Service)
@@ -10,6 +10,8 @@ class ClientAdmin(admin.ModelAdmin): list_display=('name','kind','email','phone'
 class ContactAdmin(admin.ModelAdmin): list_display=('name','kind','person','phone'); list_filter=('kind',); search_fields=('name','person','phone')
 @admin.register(Vehicle)
 class VehicleAdmin(admin.ModelAdmin): list_display=('name','plate','owner','capacity','delegate','status'); list_filter=('owner','status'); search_fields=('name','plate','delegate')
+@admin.register(TouristGuide)
+class TouristGuideAdmin(admin.ModelAdmin): list_display=('full_name','dni','carnet','phone','status','unavailable_start','unavailable_end'); list_filter=('status',); search_fields=('full_name','dni','carnet','phone')
 @admin.register(Transfer)
 class TransferAdmin(admin.ModelAdmin): list_display=('title','datetime','place','responsible','status'); list_filter=('status',); search_fields=('title','place','responsible')
 @admin.register(Expense)
