@@ -14,13 +14,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         User = get_user_model()
         reset_password = options['reset_password']
-        exists = User.objects.filter(username='admin').exists()
-        password = os.environ.get('DJANGO_ADMIN_PASSWORD')
-        needs_password = reset_password or not exists
-        if needs_password and not password and not settings.DEBUG:
-            raise CommandError('Define DJANGO_ADMIN_PASSWORD para crear o restablecer el administrador en producción.')
-
         user, created = User.objects.get_or_create(username='admin')
+        password = os.environ.get('DJANGO_ADMIN_PASSWORD')
         user.first_name = 'Administrador'
         user.last_name = 'principal'
         user.email = user.email or 'admin@yuyari.pe'

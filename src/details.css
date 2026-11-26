@@ -12,3 +12,82 @@ body.print-agenda #root .daily-agenda,body.print-agenda #root .daily-agenda *{vi
 .service-route-map{position:relative;display:block;isolation:isolate;width:100%;height:auto;min-height:0;overflow:hidden}.service-route-map-host{position:relative;display:block;width:100%;height:280px;z-index:0}.service-route-map>p{position:relative;z-index:1}.service-route-map-message,.service-route-map-warning{pointer-events:none}.passenger-drone-toggle{grid-column:span 2;display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:7px;background:#f2f7f1;color:#426c4c;font-size:11px;font-weight:600}.passenger-drone-toggle input{accent-color:#3b704c}.guardian-seat-note,.drone-selection-summary{padding:9px 11px;border-radius:7px;background:#f7f8f4;color:#6e7b70;font-size:10px}.drone-selection-summary{grid-column:span 2;background:#eaf3eb;color:#326548;font-weight:600}@media(max-width:680px){.service-route-map-host{height:220px}.passenger-drone-toggle{grid-column:span 2}}
 
 .public-departure-note{display:grid;gap:5px;padding:12px 14px;border:1px solid #dfe9df;border-radius:8px;background:#f4f8f3;color:#526c59;font-size:11px;line-height:1.5}.public-departure-note b{color:#2e5f41}.public-departure-note span{color:#75847a}.public-booking-action{min-width:148px;display:grid;gap:6px}.public-booking-action>small{font-size:10px;color:#718077}.public-booking-modal{width:min(760px,100%);max-height:90vh;overflow:auto}.public-booking-modal .modal-head p{margin:5px 0 0;color:#7b8980;font-size:11px}.public-capacity-banner{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding:12px 14px;border-radius:9px;background:#edf5ed;color:#49664f;font-size:12px}.public-capacity-banner b{font:700 23px Manrope;color:#285b3f}.public-booking-form{display:grid;gap:16px}.public-booking-form .form-grid label{display:grid;gap:7px;color:#52675a;font-size:11px;font-weight:600}.public-booking-form .form-grid input,.public-booking-form .form-grid select,.payment-status-field select{height:39px;border:1px solid #dfe7e0;border-radius:6px;padding:0 10px;background:#fff;color:#405246;font-size:12px}.booking-passenger-list{display:grid;gap:10px}.booking-passenger-card{padding:13px;border:1px solid #e3ebe4;border-radius:9px;background:#fff}.booking-passenger-card .form-grid{margin-top:10px}.seat-auto-note{font-size:10px;color:#79877e}.booking-total{display:flex;justify-content:space-between;gap:14px;padding:13px 15px;border-radius:8px;background:#f0f5f0;color:#53675a;font-size:12px}.booking-total b{color:#254d39}.payment-status-field{display:grid;gap:7px;color:#53675a;font-size:11px;font-weight:600}.public-bookings-list{margin-top:22px;border-top:1px solid #e6ece7;padding-top:16px}.public-bookings-list h3{margin:0 0 10px;font:700 14px Manrope;color:#354c3e}.public-booking-record{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #edf1ed}.public-booking-record>div:first-child{display:grid;gap:4px}.public-booking-record small,.empty-bookings{color:#7a887f;font-size:10px}.booking-payment-cell{display:grid;justify-items:end;gap:6px;min-width:120px}.booking-payment-cell>b{font-size:13px;color:#2d503c}.booking-payment-cell .status{font-size:10px}.public-booking-modal .modal-foot{position:sticky;bottom:0;background:white}.public-booking-form .passenger-drone-toggle{font-size:11px}@media(max-width:680px){.booking-total,.public-booking-record{align-items:flex-start;flex-direction:column}.booking-payment-cell{justify-items:start}.public-booking-action{min-width:125px}}
+
+/* Alertas llamativas de recordatorios, campana, destinatarios y calendario */
+.bell-wrap{position:relative}
+.bell-count{position:absolute;top:2px;right:2px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#d6392f;color:#fff;font:700 10px/17px Manrope,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff}
+.bell-popover{position:absolute;right:0;top:44px;z-index:60;width:min(360px,88vw);padding:12px;border:1px solid #dce6dd;border-radius:12px;background:#fff;box-shadow:0 18px 40px #18322624}
+.bell-popover-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #edf1ed;font-size:12px;color:#233d31}
+.bell-item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;margin-bottom:6px;border:1px solid #e7eee8;border-radius:8px;background:#f8fbf8;text-align:left;cursor:pointer}
+.bell-item.urgent{border-color:#f3b5ae;background:#fff4f2}
+.bell-item.soon{border-color:#f1d39a;background:#fffaf0}
+.bell-item span{display:grid;gap:2px}
+.bell-item b{font-size:11px;color:#20382d}
+.bell-item small{font-size:10px;color:#6c7d72}
+.bell-item em{font-style:normal;font:700 11px Manrope,sans-serif;color:#1d684f;white-space:nowrap}
+.bell-item.urgent em{color:#c03228}
+.bell-item.soon em{color:#a86414}
+.bell-empty{margin:8px 0;font-size:11px;color:#78877e;text-align:center}
+
+.reminder-alerts-banner{margin:16px 0 18px;padding:18px 20px;border:2px solid #e6a23c;background:linear-gradient(135deg,#fffaf0,#fff4df);box-shadow:0 12px 30px #b975151c}
+.reminder-alerts-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.reminder-alerts-title{display:flex;align-items:center;gap:12px}
+.reminder-bell-badge{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:#d97706;color:#fff;animation:yuyariPulse 1.8s infinite}
+@keyframes yuyariPulse{0%,100%{box-shadow:0 0 0 0 rgba(217,119,6,.45)}50%{box-shadow:0 0 0 8px rgba(217,119,6,0)}}
+.reminder-alerts-title h2{margin:0 0 2px;font:700 16px Manrope,sans-serif;color:#5f3705}
+.reminder-alerts-title p{margin:0;font-size:11px;color:#8b5b1d}
+.reminder-live-pill{padding:5px 10px;border-radius:999px;background:#d97706;color:#fff;font:700 10px Manrope,sans-serif;letter-spacing:.6px}
+.reminder-alerts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.reminder-alert-card{display:grid;gap:6px;padding:13px 14px;border:1px solid #f0d7a8;border-radius:10px;background:#fff}
+.reminder-alert-card.urgent{border-color:#e4746b;background:#fff7f6}
+.reminder-alert-card.soon{border-color:#eab354;background:#fffcf4}
+.reminder-alert-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.reminder-alert-kind{padding:2px 8px;border-radius:999px;background:#edf4ee;color:#275840;font:700 10px Manrope,sans-serif;text-transform:uppercase}
+.reminder-alert-delta{font:800 12px Manrope,sans-serif;color:#b45309}
+.reminder-alert-card.urgent .reminder-alert-delta{color:#c5281c}
+.reminder-alert-card h3{margin:0;font:700 14px Manrope,sans-serif;color:#1e352a}
+.reminder-alert-card small{display:flex;align-items:center;gap:5px;color:#607267;font-size:11px}
+.reminder-alert-users{color:#355e49!important;font-weight:600}
+.reminder-alert-btn{justify-self:start;margin-top:4px;display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:0;border-radius:7px;background:#1f513b;color:#fff;font:600 11px Manrope,sans-serif;cursor:pointer}
+
+.reminder-users-box{grid-column:span 2;margin-top:8px;padding-top:10px;border-top:1px dashed #d7e2d8;display:grid;gap:8px}
+.reminder-users-box>b{font-size:11px;color:#344c3e}
+.reminder-users-list{display:flex;flex-wrap:wrap;gap:7px}
+.reminder-user-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #dce6dd;border-radius:999px;background:#fff;font-size:11px;color:#2e4538;cursor:pointer}
+.reminder-user-chip small{color:#738479;font-size:10px}
+
+.calendar-panel{padding:18px 20px}
+.calendar-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.calendar-month-title{margin:0;font:700 20px Manrope,sans-serif;color:#1e3a2f}
+.calendar-nav-btns{display:flex;gap:8px}
+.calendar-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:8px;text-align:center;font:700 11px Manrope,sans-serif;color:#627469;text-transform:uppercase}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.calendar-day{min-height:112px;padding:8px;border:1px solid #e1e9e2;border-radius:10px;background:#fff;display:flex;flex-direction:column;gap:6px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.calendar-day:hover{border-color:#78a587;box-shadow:0 4px 14px #1d4a3512}
+.calendar-day.outside{background:#f7f9f7;opacity:.62}
+.calendar-day.today{border:2px solid #2b6047;background:#f4faf5}
+.calendar-day-head{display:flex;align-items:center;justify-content:space-between}
+.calendar-day-num{font:700 13px Manrope,sans-serif;color:#223a2f}
+.calendar-day.today .calendar-day-num{color:#1d684f}
+.calendar-day-actions{display:flex;align-items:center;gap:4px}
+.calendar-eye-btn{width:22px;height:22px;display:grid;place-items:center;border:1px solid #d5e2d7;border-radius:6px;background:#eaf4ec;color:#1f513b;cursor:pointer}
+.calendar-eye-btn:hover{background:#1f513b;color:#fff}
+.calendar-add-btn{width:22px;height:22px;display:grid;place-items:center;border:1px solid #d5e2d7;border-radius:6px;background:#f4f8f4;color:#2b6047;cursor:pointer;opacity:.85}
+.calendar-add-btn:hover{background:#2b6047;color:#fff;opacity:1}
+.calendar-day-modal{width:min(680px,96vw)}
+.calendar-summary-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px;border-bottom:1px solid #edf1ed;font-size:12px;color:#52675a}
+.calendar-summary-list{display:grid;gap:12px;padding:18px 24px 24px;max-height:65vh;overflow:auto}
+.calendar-summary-card{display:grid;gap:8px;padding:13px 15px;border:1px solid #e1e9e2;border-radius:10px;background:#fbfdfb}
+.calendar-summary-card.transfer{border-color:#f0d7a8;background:#fffcf6}
+.calendar-summary-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.calendar-summary-top>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.calendar-summary-top b{font:700 14px Manrope,sans-serif;color:#1e352a}
+.calendar-summary-meta{display:grid;gap:3px;font-size:11px;color:#55685d}
+.calendar-summary-actions{display:flex;justify-content:flex-end}
+.calendar-day-events{display:grid;gap:4px}
+.calendar-event{width:100%;display:flex;align-items:center;gap:5px;padding:4px 6px;border:0;border-radius:6px;text-align:left;font-size:10px;cursor:pointer;overflow:hidden}
+.calendar-event.service{background:#e7f3eb;color:#1b4d37}
+.calendar-event.transfer{background:#fff3de;color:#825011}
+.calendar-event b{flex:none;font-weight:700}
+.calendar-event span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:860px){.calendar-grid,.calendar-weekdays{gap:4px}.calendar-day{min-height:84px;padding:5px}}

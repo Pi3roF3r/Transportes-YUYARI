@@ -59,7 +59,7 @@ class VehicleViewSet(BaseViewSet):
 class TouristGuideViewSet(BaseViewSet):
     queryset=TouristGuide.objects.all().order_by('full_name'); serializer_class=TouristGuideSerializer; search_fields=['full_name','dni','carnet','phone']; section='guides'
 class ServiceViewSet(BaseViewSet):
-    queryset=Service.objects.select_related('client','vehicle').prefetch_related('stops','passengers','bookings__passengers').all().order_by('date','time'); serializer_class=ServiceSerializer; search_fields=['name','client_name','origin','destination','driver','type']; section='services'
+    queryset=Service.objects.select_related('client','vehicle').prefetch_related('stops','passengers','bookings__passengers','reminder_users').all().order_by('date','time'); serializer_class=ServiceSerializer; search_fields=['name','client_name','origin','destination','driver','type']; section='services'
 
     @action(detail=True, methods=['get', 'post'])
     @transaction.atomic
@@ -255,7 +255,7 @@ class ServiceViewSet(BaseViewSet):
         service.save(update_fields=['journey_status', 'journey_leg', 'journey_step', 'journey_events', 'status', 'updated_at'])
         return Response(self.get_serializer(service).data)
 class TransferViewSet(BaseViewSet):
-    queryset=Transfer.objects.select_related('service').all().order_by('datetime'); serializer_class=TransferSerializer; search_fields=['title','place','responsible']; section='transfers'
+    queryset=Transfer.objects.select_related('service').prefetch_related('reminder_users').all().order_by('datetime'); serializer_class=TransferSerializer; search_fields=['title','place','responsible']; section='transfers'
 
     @action(detail=True, methods=['post'])
     @transaction.atomic
@@ -293,6 +293,22 @@ class UserViewSet(viewsets.ModelViewSet):
         if instance.is_superuser or instance.pk == self.request.user.pk:
             raise PermissionDenied('No puedes eliminar esta cuenta administradora.')
         instance.delete()
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def reminder_user_choices(request):
+    users = get_user_model().objects.filter(is_active=True).order_by('username')
+    return Response([
+        {
+            'id': u.id,
+            'username': u.username,
+            'name': u.get_full_name() or u.username,
+            'role': user_role(u),
+            'is_admin': u.is_superuser or user_role(u) == 'Administrador',
+        }
+        for u in users
+    ])
 
 
 @api_view(['GET'])

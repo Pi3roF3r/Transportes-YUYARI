@@ -99,11 +99,15 @@ class ServiceSerializer(serializers.ModelSerializer):
     stops = StopSerializer(many=True, required=False)
     passengers = ServicePassengerSerializer(many=True, required=False)
     bookings = ServiceBookingSerializer(many=True, read_only=True)
+    reminder_users = serializers.PrimaryKeyRelatedField(many=True, queryset=get_user_model().objects.filter(is_active=True), required=False)
+    reminder_user_details = serializers.SerializerMethodField()
     client_display = serializers.SerializerMethodField()
     vehicle_display = serializers.SerializerMethodField()
     vehicle_capacity = serializers.SerializerMethodField()
     total_price = serializers.SerializerMethodField()
-    class Meta: model=Service; fields='__all__'; read_only_fields=('created_at','updated_at','client_display','vehicle_display')
+    class Meta: model=Service; fields='__all__'; read_only_fields=('created_at','updated_at','client_display','vehicle_display','reminder_user_details')
+    def get_reminder_user_details(self, obj):
+        return [{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username} for u in obj.reminder_users.all()]
     def get_client_display(self,obj): return obj.client.name if obj.client_id else obj.client_name
     def get_vehicle_display(self,obj): return str(obj.vehicle) if obj.vehicle_id else obj.vehicle_name
     def get_vehicle_capacity(self,obj): return obj.vehicle.capacity if obj.vehicle_id else 0
@@ -248,13 +252,15 @@ class ServiceSerializer(serializers.ModelSerializer):
         return attrs
     @transaction.atomic
     def create(self,validated_data):
-        stops=validated_data.pop('stops',[]); passengers=validated_data.pop('passengers',[])
+        stops=validated_data.pop('stops',[]); passengers=validated_data.pop('passengers',[]); reminder_users=validated_data.pop('reminder_users',None)
         guide=validated_data.get('tour_guide')
         if guide:
             validated_data.update(guide_name=guide.full_name, guide_document_number=guide.dni, guide_card_number=guide.carnet)
         if passengers:
             validated_data['passenger_names']='\n'.join(name for passenger in passengers for name in (passenger['full_name'], passenger.get('guardian_name', '')) if name)
         obj=Service.objects.create(**validated_data)
+        if reminder_users is not None:
+            obj.reminder_users.set(reminder_users)
         for i,stop in enumerate(stops): Stop.objects.create(service=obj,position=stop.pop('position',i),**stop)
         for i,passenger in enumerate(passengers):
             position = passenger.pop('position', i)
@@ -264,11 +270,14 @@ class ServiceSerializer(serializers.ModelSerializer):
     def update(self,instance,validated_data):
         stops=validated_data.pop('stops',None)
         passengers=validated_data.pop('passengers',None)
+        reminder_users=validated_data.pop('reminder_users',None)
         if 'tour_guide' in validated_data:
             guide=validated_data['tour_guide']
             validated_data.update(guide_name=guide.full_name if guide else '', guide_document_number=guide.dni if guide else '', guide_card_number=guide.carnet if guide else '')
         for k,v in validated_data.items(): setattr(instance,k,v)
         instance.save()
+        if reminder_users is not None:
+            instance.reminder_users.set(reminder_users)
         if stops is not None:
             instance.stops.all().delete()
             for i,stop in enumerate(stops): Stop.objects.create(service=instance,position=stop.pop('position',i),**stop)
@@ -281,7 +290,11 @@ class ServiceSerializer(serializers.ModelSerializer):
             instance.save(update_fields=['passenger_names','updated_at'])
         return instance
 class TransferSerializer(serializers.ModelSerializer):
-    class Meta: model=Transfer; fields='__all__'; read_only_fields=('created_at','updated_at')
+    reminder_users = serializers.PrimaryKeyRelatedField(many=True, queryset=get_user_model().objects.filter(is_active=True), required=False)
+    reminder_user_details = serializers.SerializerMethodField()
+    class Meta: model=Transfer; fields='__all__'; read_only_fields=('created_at','updated_at','reminder_user_details')
+    def get_reminder_user_details(self, obj):
+        return [{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username} for u in obj.reminder_users.all()]
 class ExpenseSerializer(serializers.ModelSerializer):
     class Meta: model=Expense; fields='__all__'; read_only_fields=('created_at','updated_at')
 class UserSerializer(serializers.ModelSerializer):

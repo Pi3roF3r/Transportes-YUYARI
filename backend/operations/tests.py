@@ -526,3 +526,39 @@ class TransferMovementApiTests(APITestCase):
 
         duplicate_arrival = self.client.post(endpoint, {'action': 'arrive'}, format='json')
         self.assertEqual(duplicate_arrival.status_code, 400)
+
+    def test_reminders_and_user_choices_on_service_and_transfer(self):
+        worker = get_user_model().objects.create_user(
+            username='worker-rem', email='worker-rem@example.com', password='test-password-123'
+        )
+        choices_res = self.client.get(reverse('reminder_user_choices'))
+        self.assertEqual(choices_res.status_code, 200)
+        self.assertTrue(any(u['id'] == worker.id for u in choices_res.data))
+
+        transfer_res = self.client.post(reverse('transfer-list'), {
+            'title': 'Trasbordo 15 min',
+            'datetime': (timezone.now() + timezone.timedelta(minutes=15)).isoformat(),
+            'place': 'Plaza de Armas',
+            'reminders': ['2 h antes', '1 h antes', '30 min antes', '15 min antes'],
+            'reminder_users': [worker.id],
+        }, format='json')
+        self.assertEqual(transfer_res.status_code, 201, transfer_res.data)
+        self.assertIn('15 min antes', transfer_res.data['reminders'])
+        self.assertEqual(transfer_res.data['reminder_users'], [worker.id])
+
+        service_res = self.client.post(reverse('service-list'), {
+            'name': 'Tour con recordatorio',
+            'type': 'Tour público',
+            'date': (timezone.localdate() + timezone.timedelta(days=1)).isoformat(),
+            'time': '08:30:00',
+            'origin': 'Arequipa',
+            'destination': 'Colca',
+            'vehicle': Vehicle.objects.create(name='Van R', plate='REM-001', capacity=10, delegate='Luis', delegate_license_number='LIC-99').pk,
+            'price': 100,
+            'reminders': ['1 h antes', '15 min antes'],
+            'reminder_users': [worker.id],
+        }, format='json')
+        self.assertEqual(service_res.status_code, 201, service_res.data)
+        self.assertEqual(service_res.data['reminders'], ['1 h antes', '15 min antes'])
+        self.assertEqual(service_res.data['reminder_users'], [worker.id])
+        self.assertEqual(service_res.data['reminder_user_details'][0]['username'], 'worker-rem')

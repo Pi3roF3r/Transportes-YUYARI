@@ -107,6 +107,8 @@ class Service(Timestamped):
     notes = models.TextField(blank=True)
     incident_log = models.TextField(blank=True)
     checklist = models.JSONField(default=dict, blank=True)
+    reminders = models.JSONField(default=list, blank=True)
+    reminder_users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='service_reminders')
     def __str__(self): return f'{self.name} · {self.date}'
 
 
@@ -193,6 +195,7 @@ class Transfer(Timestamped):
     place = models.CharField(max_length=240)
     responsible = models.CharField(max_length=180, blank=True)
     reminders = models.JSONField(default=list, blank=True)
+    reminder_users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='transfer_reminders')
     status = models.CharField(max_length=40, choices=STATUSES, default='Programado')
     departed_at = models.DateTimeField(null=True, blank=True)
     arrived_at = models.DateTimeField(null=True, blank=True)
