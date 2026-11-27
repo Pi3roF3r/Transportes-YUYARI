@@ -90,7 +90,35 @@ body.print-agenda #root .daily-agenda,body.print-agenda #root .daily-agenda *{vi
 .calendar-event.transfer{background:#fff3de;color:#825011}
 .calendar-event b{flex:none;font-weight:700}
 .calendar-event span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* Responsive Sidebar Scroll & Touch Layout */
+/* Botón para volver al sitio público / landing */
+.landing-return-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 12px;
+  border:1px solid #d5e1d7;
+  border-radius:8px;
+  background:#f4faf5;
+  color:#24583d;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.landing-return-btn:hover{
+  background:#1d4e36;
+  color:#fff;
+  border-color:#1d4e36;
+}
+@media(max-width:640px){
+  .landing-return-btn span{
+    display:none;
+  }
+  .landing-return-btn{
+    padding:7px 8px;
+  }
+}
+
 .sidebar{
   overflow-y:auto!important;
   overflow-x:hidden!important;
